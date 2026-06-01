@@ -11,6 +11,8 @@ import PhotoHeader from '../components/PhotoHeader';
 import DailyCheckin from '../components/DailyCheckin';
 import NotificationBell from '../components/NotificationBell';
 import ProfileModal from '../components/ProfileModal';
+import AdminScreen from './AdminScreen';
+import { useAuth } from '../lib/AuthContext';
 
 const { width, height: screenHeight } = Dimensions.get('window');
 
@@ -18,6 +20,8 @@ export default function HomeScreen() {
   const [heroVisible, setHeroVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const { user, isAdmin } = useAuth();
   const navigation = useNavigation<any>();
 
   const today = new Date();
@@ -30,7 +34,11 @@ export default function HomeScreen() {
       <View style={styles.floatingBar}>
         <NotificationBell />
         <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.profileBtn}>
-          <Ionicons name="person-circle-outline" size={28} color={colors.white} />
+          <View>
+            <Ionicons name="person-circle-outline" size={28} color={colors.white} />
+            {user && !isAdmin && <View style={styles.authDot} />}
+            {isAdmin && <View style={styles.adminDot}><Text style={styles.adminDotText}>👑</Text></View>}
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -145,7 +153,12 @@ export default function HomeScreen() {
 
       <FullscreenPhoto source={images.unifiedChurch} visible={heroVisible} onClose={() => setHeroVisible(false)} />
       <FullscreenPhoto source={images.smiles} visible={aboutVisible} onClose={() => setAboutVisible(false)} />
-      <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ProfileModal
+        visible={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onOpenAdmin={() => setAdminOpen(true)}
+      />
+      <AdminScreen visible={adminOpen} onClose={() => setAdminOpen(false)} />
     </View>
   );
 }
@@ -177,6 +190,9 @@ const styles = StyleSheet.create({
     paddingTop: 14, paddingRight: 16,
   },
   profileBtn: { padding: 6 },
+  authDot: { position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: '#2A8A5A', borderWidth: 1.5, borderColor: colors.white },
+  adminDot: { position: 'absolute', bottom: -4, right: -4 },
+  adminDotText: { fontSize: 13 },
 
   // Sections
   section: { paddingHorizontal: 20, marginTop: 28 },
