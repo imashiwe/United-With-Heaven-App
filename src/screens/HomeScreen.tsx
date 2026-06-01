@@ -11,6 +11,7 @@ import PhotoHeader from '../components/PhotoHeader';
 import DailyCheckin from '../components/DailyCheckin';
 import NotificationBell from '../components/NotificationBell';
 import ProfileModal from '../components/ProfileModal';
+import AuthModal from '../components/AuthModal';
 import AdminScreen from './AdminScreen';
 import { useAuth } from '../lib/AuthContext';
 
@@ -20,8 +21,9 @@ export default function HomeScreen() {
   const [heroVisible, setHeroVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, refreshAdmin } = useAuth();
   const navigation = useNavigation<any>();
 
   const today = new Date();
@@ -30,16 +32,22 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Floating header bar with notification bell + profile */}
+      {/* Floating header bar */}
       <View style={styles.floatingBar}>
         <NotificationBell />
-        <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.profileBtn}>
-          <View>
-            <Ionicons name="person-circle-outline" size={28} color={colors.white} />
-            {user && !isAdmin && <View style={styles.authDot} />}
-            {isAdmin && <View style={styles.adminDot}><Text style={styles.adminDotText}>👑</Text></View>}
-          </View>
-        </TouchableOpacity>
+        {user ? (
+          <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.profileBtn}>
+            <View>
+              <Ionicons name="person-circle" size={30} color={isAdmin ? colors.gold : colors.white} />
+              {isAdmin && <Text style={styles.crownBadge}>👑</Text>}
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => setAuthOpen(true)} style={styles.signInBtn}>
+            <Ionicons name="person-circle-outline" size={18} color={colors.white} />
+            <Text style={styles.signInBtnText}>Sign In</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -56,6 +64,22 @@ export default function HomeScreen() {
           headingSize={38}
           onPhotoPress={() => setHeroVisible(true)}
         />
+
+        {/* ── Account CTA (only when not signed in) ── */}
+        {!user && (
+          <View style={styles.section}>
+            <TouchableOpacity style={styles.accountCta} onPress={() => setAuthOpen(true)} activeOpacity={0.88}>
+              <View style={styles.accountCtaLeft}>
+                <Text style={styles.accountCtaIcon}>✦</Text>
+                <View>
+                  <Text style={styles.accountCtaTitle}>Create Account / Sign In</Text>
+                  <Text style={styles.accountCtaSub}>Save your streak, profile &amp; history across devices</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── Daily Check-In ── */}
         <View style={styles.section}>
@@ -153,6 +177,11 @@ export default function HomeScreen() {
 
       <FullscreenPhoto source={images.unifiedChurch} visible={heroVisible} onClose={() => setHeroVisible(false)} />
       <FullscreenPhoto source={images.smiles} visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <AuthModal
+        visible={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={() => { refreshAdmin(); setAuthOpen(false); }}
+      />
       <ProfileModal
         visible={profileOpen}
         onClose={() => setProfileOpen(false)}
@@ -190,9 +219,23 @@ const styles = StyleSheet.create({
     paddingTop: 14, paddingRight: 16,
   },
   profileBtn: { padding: 6 },
-  authDot: { position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: 5, backgroundColor: '#2A8A5A', borderWidth: 1.5, borderColor: colors.white },
-  adminDot: { position: 'absolute', bottom: -4, right: -4 },
-  adminDotText: { fontSize: 13 },
+  crownBadge: { position: 'absolute', bottom: -4, right: -4, fontSize: 12 },
+  signInBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+  },
+  signInBtnText: { color: colors.white, fontSize: 13, fontFamily: fonts.bodyBold },
+  accountCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.primary, borderRadius: 16, padding: 18,
+    gap: 12,
+  },
+  accountCtaLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  accountCtaIcon: { color: colors.white, fontSize: 22 },
+  accountCtaTitle: { color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold },
+  accountCtaSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: fonts.body, marginTop: 2 },
 
   // Sections
   section: { paddingHorizontal: 20, marginTop: 28 },
