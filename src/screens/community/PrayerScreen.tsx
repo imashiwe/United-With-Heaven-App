@@ -9,6 +9,8 @@ import { supabase } from '../../lib/supabase';
 import { images } from '../../images';
 import FullscreenPhoto from '../../components/FullscreenPhoto';
 import PhotoHeader from '../../components/PhotoHeader';
+import ReactionButton from '../../components/ReactionButton';
+import { getSessionId, getProfile } from '../../utils/session';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -24,8 +26,13 @@ export default function PrayerScreen() {
   const [name, setName] = useState('');
   const [request, setRequest] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sessionId, setSessionId] = useState('');
 
-  useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => {
+    getSessionId().then(setSessionId);
+    getProfile().then((p) => { if (p.displayName) setName(p.displayName); });
+    fetchRequests();
+  }, []);
 
   async function fetchRequests() {
     setLoading(true);
@@ -37,18 +44,15 @@ export default function PrayerScreen() {
   async function saveRequest() {
     if (!request.trim()) { Alert.alert('Please enter your prayer request'); return; }
     setSaving(true);
+    const sid = sessionId || await getSessionId();
     const { error } = await supabase.from('prayer_requests').insert({
       name: name.trim() || 'Anonymous',
       request: request.trim(),
+      session_id: sid,
     });
     if (error) { Alert.alert('Error', 'Could not submit. Please try again.'); }
-    else { setName(''); setRequest(''); setModalVisible(false); fetchRequests(); }
+    else { setRequest(''); setModalVisible(false); fetchRequests(); }
     setSaving(false);
-  }
-
-  async function markPrayed(id: string, current: number) {
-    await supabase.from('prayer_requests').update({ prayed_count: current + 1 }).eq('id', id);
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, prayed_count: current + 1 } : r));
   }
 
   return (
@@ -84,7 +88,7 @@ export default function PrayerScreen() {
           <View key={item.id} style={[styles.card, shadow.small]}>
             <View style={styles.cardHeader}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name[0].toUpperCase()}</Text>
+                <Text style={styles.avatarText}>{(item.name || 'A')[0].toUpperCase()}</Text>
               </View>
               <View>
                 <Text style={styles.cardName}>{item.name}</Text>
@@ -92,10 +96,26 @@ export default function PrayerScreen() {
               </View>
             </View>
             <Text style={styles.cardRequest}>{item.request}</Text>
-            <TouchableOpacity style={styles.prayBtn} onPress={() => markPrayed(item.id, item.prayed_count)}>
-              <Ionicons name="hand-left" size={14} color="#4A5AAA" style={{ marginRight: 6 }} />
-              <Text style={styles.prayBtnText}>I Prayed  ·  {item.prayed_count}</Text>
-            </TouchableOpacity>
+            <View style={styles.reactionRow}>
+              <ReactionButton
+                parentType="prayer_request"
+                parentId={item.id}
+                reactionType="pray"
+                label="I Prayed"
+                emoji="🙏"
+                activeColor="#4A5AAA"
+                activeBg="#EEF0FF"
+              />
+              <ReactionButton
+                parentType="prayer_request"
+                parentId={item.id}
+                reactionType="amen"
+                label="Amen"
+                emoji="✦"
+                activeColor="#B8722A"
+                activeBg="#FFF3E8"
+              />
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -133,27 +153,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 40 },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: 14, padding: 16, marginBottom: 24, gap: 8 },
-  addBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  addBtnText: { color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold },
   empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 20 },
-  emptyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  emptySubText: { color: colors.textSecondary, fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 22 },
+  emptyText: { color: colors.textPrimary, fontSize: 16, fontFamily: fonts.bodyBold },
+  emptySubText: { color: colors.textSecondary, fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 22, fontFamily: fonts.body },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  cardName: { color: colors.textPrimary, fontSize: 13, fontWeight: '700' },
-  cardDate: { color: colors.textMuted, fontSize: 12 },
-  cardRequest: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
-  prayBtn: { marginTop: 14, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: '#EEF0FF', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  prayBtnText: { color: '#4A5AAA', fontSize: 13, fontWeight: '600' },
+  avatarText: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold },
+  cardName: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bodyBold },
+  cardDate: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.body },
+  cardRequest: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, fontFamily: fonts.body },
+  reactionRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(44,24,16,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, borderTopWidth: 3, borderColor: colors.primary },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  closeText: { color: colors.textMuted, fontSize: 14, marginBottom: 16 },
-  modalTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: '800', fontFamily: 'serif', marginBottom: 6 },
-  modalSub: { color: colors.textSecondary, fontSize: 13, marginBottom: 20, lineHeight: 20 },
-  input: { backgroundColor: colors.card, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15, marginBottom: 14, borderWidth: 1.5, borderColor: colors.border },
+  closeText: { color: colors.textMuted, fontSize: 14, marginBottom: 16, fontFamily: fonts.body },
+  modalTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, marginBottom: 6 },
+  modalSub: { color: colors.textSecondary, fontSize: 13, marginBottom: 20, lineHeight: 20, fontFamily: fonts.body },
+  input: { backgroundColor: colors.card, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15, marginBottom: 14, borderWidth: 1.5, borderColor: colors.border, fontFamily: fonts.body },
   textArea: { height: 120 },
   submitBtn: { backgroundColor: colors.primary, borderRadius: 14, padding: 16, alignItems: 'center' },
-  submitBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  submitBtnText: { color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold },
 });

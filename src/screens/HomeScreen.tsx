@@ -8,12 +8,16 @@ import { images } from '../images';
 import { inspirationalMessages, bibleVerses } from '../data/content';
 import FullscreenPhoto from '../components/FullscreenPhoto';
 import PhotoHeader from '../components/PhotoHeader';
+import DailyCheckin from '../components/DailyCheckin';
+import NotificationBell from '../components/NotificationBell';
+import ProfileModal from '../components/ProfileModal';
 
 const { width, height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const [heroVisible, setHeroVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const navigation = useNavigation<any>();
 
   const today = new Date();
@@ -22,6 +26,14 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Floating header bar with notification bell + profile */}
+      <View style={styles.floatingBar}>
+        <NotificationBell />
+        <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.profileBtn}>
+          <Ionicons name="person-circle-outline" size={28} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Hero Section ── */}
@@ -36,6 +48,12 @@ export default function HomeScreen() {
           headingSize={38}
           onPhotoPress={() => setHeroVisible(true)}
         />
+
+        {/* ── Daily Check-In ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Daily Devotion</Text>
+          <DailyCheckin />
+        </View>
 
         {/* ── Verse of the Day ── */}
         <View style={styles.section}>
@@ -77,6 +95,10 @@ export default function HomeScreen() {
           <View style={styles.featuredRow}>
             <FeatureTile icon="hand-left" label="Prayer Requests" color={['#FFF4EC', '#FFE8D4']} accent="#9A6030" onPress={() => navigation.navigate('Prayer')} />
             <FeatureTile icon="flame" label="Testimonies" color={['#FFF0E8', '#FFE0D0']} accent="#AA3A20" onPress={() => navigation.navigate('Testimonies')} />
+          </View>
+          <View style={styles.featuredRow}>
+            <FeatureTile icon="people" label="Community" color={['#F0F4FF', '#E0E8FF']} accent="#4A5AAA" onPress={() => navigation.navigate('Community')} />
+            <FeatureTile icon="radio" label="Prayer Room" color={['#F0FFF4', '#D0FFE0']} accent="#2A8A5A" onPress={() => navigation.navigate('Community')} />
           </View>
         </View>
 
@@ -123,6 +145,7 @@ export default function HomeScreen() {
 
       <FullscreenPhoto source={images.unifiedChurch} visible={heroVisible} onClose={() => setHeroVisible(false)} />
       <FullscreenPhoto source={images.smiles} visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} />
     </View>
   );
 }
@@ -147,6 +170,13 @@ function FeatureTile({ icon, label, color, accent, onPress }: {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingBottom: 40 },
+
+  floatingBar: {
+    position: 'absolute', top: 0, right: 0, zIndex: 100,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingTop: 14, paddingRight: 16,
+  },
+  profileBtn: { padding: 6 },
 
   // Sections
   section: { paddingHorizontal: 20, marginTop: 28 },

@@ -9,6 +9,9 @@ import { supabase } from '../../lib/supabase';
 import { images } from '../../images';
 import FullscreenPhoto from '../../components/FullscreenPhoto';
 import PhotoHeader from '../../components/PhotoHeader';
+import ReactionButton from '../../components/ReactionButton';
+import CommentsModal from '../../components/CommentsModal';
+import { getSessionId, getProfile } from '../../utils/session';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -34,13 +37,17 @@ export default function TestimoniesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [photoVisible, setPhotoVisible] = useState(false);
   const [filterCategory, setFilterCategory] = useState('All');
+  const [commentsFor, setCommentsFor] = useState<Testimony | null>(null);
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [story, setStory] = useState('');
   const [category, setCategory] = useState('General');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { fetchTestimonies(); }, []);
+  useEffect(() => {
+    getProfile().then((p) => { if (p.displayName) setName(p.displayName); });
+    fetchTestimonies();
+  }, []);
 
   async function fetchTestimonies() {
     setLoading(true);
@@ -52,17 +59,14 @@ export default function TestimoniesScreen() {
   async function saveTestimony() {
     if (!title.trim() || !story.trim()) { Alert.alert('Please fill in the title and your testimony'); return; }
     setSaving(true);
+    const sessionId = await getSessionId();
     const { error } = await supabase.from('testimonies').insert({
       name: name.trim() || 'Anonymous', title: title.trim(), story: story.trim(), category,
+      session_id: sessionId,
     });
     if (error) { Alert.alert('Error', 'Could not submit. Please try again.'); }
-    else { setName(''); setTitle(''); setStory(''); setCategory('General'); setModalVisible(false); fetchTestimonies(); }
+    else { setTitle(''); setStory(''); setCategory('General'); setModalVisible(false); fetchTestimonies(); }
     setSaving(false);
-  }
-
-  async function likeTestimony(id: string, current: number) {
-    await supabase.from('testimonies').update({ likes: current + 1 }).eq('id', id);
-    setTestimonies((prev) => prev.map((t) => t.id === id ? { ...t, likes: current + 1 } : t));
   }
 
   const filtered = filterCategory === 'All' ? testimonies : testimonies.filter((t) => t.category === filterCategory);
@@ -110,7 +114,7 @@ export default function TestimoniesScreen() {
             <View key={item.id} style={[styles.card, shadow.small]}>
               <View style={styles.cardHeader}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.name[0].toUpperCase()}</Text>
+                  <Text style={styles.avatarText}>{(item.name || 'A')[0].toUpperCase()}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.name}</Text>
@@ -121,16 +125,31 @@ export default function TestimoniesScreen() {
                 </View>
               </View>
               <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardStory}>{item.story}</Text>
-              <TouchableOpacity style={styles.likeBtn} onPress={() => likeTestimony(item.id, item.likes)}>
-                <Ionicons name="flame" size={14} color="#AA4A2A" style={{ marginRight: 6 }} />
-                <Text style={styles.likeBtnText}>Amen!  ·  {item.likes}</Text>
-              </TouchableOpacity>
+              <Text style={styles.cardStory} numberOfLines={4}>{item.story}</Text>
+              <View style={styles.actionRow}>
+                <ReactionButton
+                  parentType="testimony"
+                  parentId={item.id}
+                  reactionType="amen"
+                  label="Amen"
+                  emoji="🔥"
+                  activeColor="#AA4A2A"
+                  activeBg="#FFF0E8"
+                />
+                <TouchableOpacity
+                  style={styles.commentBtn}
+                  onPress={() => setCommentsFor(item)}
+                >
+                  <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={styles.commentBtnText}>Comment</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           );
         })}
       </ScrollView>
 
+      {/* Compose modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -159,6 +178,16 @@ export default function TestimoniesScreen() {
       </Modal>
 
       <FullscreenPhoto source={images.flowers} visible={photoVisible} onClose={() => setPhotoVisible(false)} />
+
+      {commentsFor && (
+        <CommentsModal
+          visible={!!commentsFor}
+          onClose={() => setCommentsFor(null)}
+          parentType="testimony"
+          parentId={commentsFor.id}
+          parentTitle={commentsFor.title}
+        />
+      )}
     </View>
   );
 }
@@ -167,40 +196,41 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 40 },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: 14, padding: 16, marginBottom: 16, gap: 8 },
-  addBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  addBtnText: { color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold },
   filterScroll: { marginBottom: 20 },
   filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  filterText: { color: colors.textSecondary, fontSize: 13, fontFamily: fonts.bodySemiBold },
   filterTextActive: { color: colors.white },
   empty: { alignItems: 'center', marginTop: 40, paddingHorizontal: 20 },
-  emptyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  emptySubText: { color: colors.textSecondary, fontSize: 14, marginTop: 6, textAlign: 'center' },
+  emptyText: { color: colors.textPrimary, fontSize: 16, fontFamily: fonts.bodyBold },
+  emptySubText: { color: colors.textSecondary, fontSize: 14, marginTop: 6, textAlign: 'center', fontFamily: fonts.body },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  cardName: { color: colors.textPrimary, fontSize: 13, fontWeight: '700' },
-  cardDate: { color: colors.textMuted, fontSize: 12 },
+  avatarText: { color: colors.white, fontSize: 16, fontFamily: fonts.bodyBold },
+  cardName: { color: colors.textPrimary, fontSize: 13, fontFamily: fonts.bodyBold },
+  cardDate: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.body },
   categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  categoryBadgeText: { fontSize: 11, fontWeight: '700' },
-  cardTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '800', marginBottom: 8, fontFamily: 'serif' },
-  cardStory: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
-  likeBtn: { marginTop: 14, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0E8', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  likeBtnText: { color: '#AA4A2A', fontSize: 13, fontWeight: '600' },
+  categoryBadgeText: { fontSize: 11, fontFamily: fonts.bodyBold },
+  cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fonts.heading, marginBottom: 8 },
+  cardStory: { color: colors.textSecondary, fontSize: 14, lineHeight: 22, fontFamily: fonts.body },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 14, alignItems: 'center' },
+  commentBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F0E8', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  commentBtnText: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.bodySemiBold },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(44,24,16,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, borderTopWidth: 3, borderColor: colors.primary },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  closeText: { color: colors.textMuted, fontSize: 14, marginBottom: 16 },
-  modalTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: '800', fontFamily: 'serif', marginBottom: 6 },
-  modalSub: { color: colors.textSecondary, fontSize: 13, marginBottom: 16, lineHeight: 20 },
-  fieldLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
+  closeText: { color: colors.textMuted, fontSize: 14, marginBottom: 16, fontFamily: fonts.body },
+  modalTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, marginBottom: 6 },
+  modalSub: { color: colors.textSecondary, fontSize: 13, marginBottom: 16, lineHeight: 20, fontFamily: fonts.body },
+  fieldLabel: { color: colors.textSecondary, fontSize: 12, fontFamily: fonts.bodyBold, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
   catBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   catBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  catBtnText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  catBtnText: { color: colors.textSecondary, fontSize: 13, fontFamily: fonts.bodySemiBold },
   catBtnTextActive: { color: colors.white },
-  input: { backgroundColor: colors.card, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15, marginBottom: 14, borderWidth: 1.5, borderColor: colors.border },
+  input: { backgroundColor: colors.card, borderRadius: 12, padding: 14, color: colors.textPrimary, fontSize: 15, marginBottom: 14, borderWidth: 1.5, borderColor: colors.border, fontFamily: fonts.body },
   textArea: { height: 140 },
   submitBtn: { backgroundColor: colors.primary, borderRadius: 14, padding: 16, alignItems: 'center' },
-  submitBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  submitBtnText: { color: colors.white, fontSize: 15, fontFamily: fonts.bodyBold },
 });

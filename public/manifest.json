@@ -1,0 +1,26 @@
+{
+  "name": "United With Heaven",
+  "short_name": "UWH",
+  "description": "A prophetic ministry app for worship, written revelation, and anointed teaching.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#FAF6F0",
+  "theme_color": "#B8722A",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.cb975bba2216ce10a60e6c0ffe9941a2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.cb975bba2216ce10a60e6c0ffe9941a2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

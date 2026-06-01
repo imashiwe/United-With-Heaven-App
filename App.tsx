@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { useFonts, PlayfairDisplay_700Bold, PlayfairDisplay_400Regular, PlayfairDisplay_700Bold_Italic } from '@expo-google-fonts/playfair-display';
 import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import AppNavigator from './src/navigation/AppNavigator';
+import PwaInstallPrompt from './src/components/PwaInstallPrompt';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -27,6 +28,7 @@ export default function App() {
     <>
       <StatusBar style="light" />
       <AppNavigator />
+      <PwaInstallPrompt />
     </>
   );
 }
